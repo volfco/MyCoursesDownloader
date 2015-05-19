@@ -1,5 +1,5 @@
 # MyCoursesDownloader
-v0.1.3
+v0.1.4
 
 **What is it?**
 
@@ -16,4 +16,4 @@ MyCoursesDownloader is a python script that downloads the following from MyCours
 
 **Usage**
 
-> python run.py -u cxm7688 -p password -d mycourses
+> python mycoursesdownloader.py -u cxm7688 -p password -d mycourses
