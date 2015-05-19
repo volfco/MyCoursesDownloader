@@ -2,11 +2,23 @@ import requests
 from bs4 import BeautifulSoup
 import re
 import os
+from urllib.parse import unquote
 
 
-import pprint
+import argparse
 
-DIR_TO_WERK = "./mycourses"  # THIS DIRECTORY MUST EXIST
+parser = argparse.ArgumentParser(description='Downloads all course contents from MyCourses')
+parser.add_argument('-u', help='Your RIT Username that you use for MyCourses')
+parser.add_argument('-p', help='Your RIT Password that you use for MyCourses')
+parser.add_argument('-d', help='The directory where the files will be downloaded')
+
+args = parser.parse_args()
+
+if args.u is None or args.p is None or args.d is None:
+    print("Invalid usage. see run.py -h")
+    exit()
+
+DIR_TO_WERK = "./" + args.d  # THIS DIRECTORY MUST EXIST
 
 re = requests.Session()
 
@@ -14,9 +26,18 @@ URLS = []
 
 # Log in
 req = re.post('https://mycourses.rit.edu/d2l/lp/auth/login/login.d2l', data={
-    'username': '<RIT USERNAME>',
-    'password': '<RIT PASSWORD>'
+    'username': args.u,
+    'password': args.p
 })
+
+
+def mkdir_recursive(path):
+    sub_path = os.path.dirname(path)
+    if not os.path.exists(sub_path):
+        mkdir_recursive(sub_path)
+    if not os.path.exists(path):
+        os.mkdir(path)
+
 
 if req.status_code is 200:
     print(" Logging into MyCourses ... M'Kay")
@@ -37,17 +58,7 @@ for line in xsrf:
     if "D2L.LP.Web.Authentication.Xsrf.Init" in line:
         xsrf = line.split("\"")[16][:-1]
         print(" Xsrf is " + xsrf)
-        # "43":"{\"_type\":\"func\",\"N\":\"D2L.LP.Web.Authentication.Xsrf.Init\",\"P\":[\"d2l_referrer\",\"LGTVl3f1rS91eHLciWDRhpk9okic8uWr\",980578668]}",
 
-
-resp = soup.findAll(attrs={'class': 'd2l-datalist'})[0].findAll('a', attrs={'class':'d2l-left'})
-for url in resp:
-    url_code = url['href'].replace('/d2l/lp/ouHome/home.d2l?ou=', '')
-    title = url['title'].split(' ')[1]
-    URLS.append([url_code, title])
-    print(" Found " + title)
-
-# Get the rest
 data = {
     'widgetId': "11",
     "placeholderId$Value": "d2l_1_12_592",
@@ -60,8 +71,6 @@ data = {
     'requestId': '3',
 
     "d2l_referrer": xsrf,
-
-
 }
 
 # Switch to the other thing
@@ -111,6 +120,7 @@ for course in URLS:
             os.mkdir(DIR_TO_WERK + "/" + course[1])
     except FileNotFoundError:   # This error happens when there are / in the course name
         print ("  ERROR. Ah Fuck. I'll fix this in v0.0.2")
+        continue
 
     for toc_dataset in toc_page_objs:
         pointer = toc_dataset.findAll('h2')[0].text
@@ -118,20 +128,19 @@ for course in URLS:
         tmp_links = toc_dataset.findAll(attrs={'class': 'd2l-link-main'})
         for link in tmp_links:
             file_id = link['href'].split('/')[6]
-            print(file_id)
             url = "https://mycourses.rit.edu/d2l/le/content/"+ course[0] +"/topics/files/download/" + file_id  + "/DirectFileTopicDownload"
             file = re.get(url, stream=True)
 
             path = DIR_TO_WERK + "/" + course[1] + "/" + pointer + "/"
 
             if not os.path.isdir(path):
-                os.mkdir(path)
+                mkdir_recursive(path)
 
             try:
-                name = file.headers['content-disposition'].split(' ')[2].split("\"")[1]
+                name = unquote(file.headers['content-disposition'].split(' ')[2].split("\"")[1])
                 path += name
 
-                print("  Downloading " + name + " to " + path)
+                print("   Downloading " + name + " to " + path)
 
                 with open(path, 'wb') as f:
                     for chunk in file.iter_content(chunk_size=1024):
@@ -145,8 +154,9 @@ for course in URLS:
 
     print ("  Downloading Dropbox Files")
 
+    # There are file attachments in the dropbox
     if course[1] == "PHIL.102.15":
-        print(" STAHP! ")
+        print(" Edge case I do not want to deal with ")
         continue
 
     dropbox_resp = re.get("https://mycourses.rit.edu/d2l/lms/dropbox/user/folders_list.d2l?ou=" + course[0]  + "&isprv=0")
@@ -163,7 +173,7 @@ for course in URLS:
 
 
         # Get the title of the thing
-        if dropbox_tr.text == "     ":
+        if dropbox_tr.text.strip() == "":
             continue
 
         dropbox_item_title = dropbox_tr.findAll('th', attrs={'class': 'd_ich'})
@@ -171,7 +181,7 @@ for course in URLS:
 
         if len(dropbox_item_title) == 0:
             continue
-        elif len(dropbox_item_title[0].find('a')) == 1:
+        elif dropbox_item_title[0].find('a') is not None and len(dropbox_item_title[0].find('a')) == 1:
             dropbox_item_name = dropbox_item_title[0].find('a').text
         else:
             dropbox_item_name = dropbox_tr.find('label').text
@@ -191,7 +201,7 @@ for course in URLS:
             continue
 
 
-        print("   Downloading " + dropbox_item_name)
+        #print("   Downloading " + dropbox_item_name)
 
         dropbox_dl_page = re.get("https://mycourses.rit.edu" + dropbox_item_page['href'])
         dropbox_dl_soup = BeautifulSoup(dropbox_dl_page.text)
@@ -203,19 +213,15 @@ for course in URLS:
             url = "https://mycourses.rit.edu" + dropbox_dl_link.find('a')['href']
             file = re.get(url, stream=True)
 
-            path = DIR_TO_WERK + "/" + course[1] + "/dropbox/"
-            if not os.path.isdir(path):
-                os.mkdir(path)
-
             path = DIR_TO_WERK + "/" + course[1] + "/dropbox/" + dropbox_item_name + "/"
             if not os.path.isdir(path):
-                os.mkdir(path)
+                mkdir_recursive(path)
 
             try:
-                name = file.headers['content-disposition'].split(' ')[2].split("\"")[1]
+                name = unquote(file.headers['content-disposition'].split(' ')[2].split("\"")[1])
                 path += name
 
-                print("    Downloading " + name + " to " + path)
+                print("   Downloading " + name + " to " + path)
 
                 with open(path, 'wb') as f:
                     for chunk in file.iter_content(chunk_size=1024):
@@ -223,4 +229,4 @@ for course in URLS:
                             f.write(chunk)
                             f.flush()
             except Exception as e:
-                print("  ERROR. ", e)
+                print("  ERROR. ", e, " Maybe this dropbox is inaccessable?")
