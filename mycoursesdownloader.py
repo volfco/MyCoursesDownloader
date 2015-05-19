@@ -40,7 +40,7 @@ def mkdir_recursive(path):
         os.mkdir(path)
 
 def safeFilePath(path):
-    bad = ["<", ">", ":", "|", "?", "*"]
+    bad = ["<", ">", ":", "|", "?", "*", " / ", " \ "]
     for char in bad:
         path = path.replace(char, " ")
     return path
