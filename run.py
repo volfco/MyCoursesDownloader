@@ -3,9 +3,18 @@ from bs4 import BeautifulSoup
 import re
 import os
 from urllib.parse import unquote
-
-
 import argparse
+
+
+# basically, mkdir -p /blah/blah/blah
+def mkdir_recursive(path):
+    sub_path = os.path.dirname(path)
+    if not os.path.exists(sub_path):
+        mkdir_recursive(sub_path)
+    if not os.path.exists(path):
+        os.mkdir(path)
+
+
 
 parser = argparse.ArgumentParser(description='Downloads all course contents from MyCourses')
 parser.add_argument('-u', help='Your RIT Username that you use for MyCourses')
@@ -20,34 +29,23 @@ if args.u is None or args.p is None or args.d is None:
 
 DIR_TO_WERK = "./" + args.d  # THIS DIRECTORY MUST EXIST
 
-re = requests.Session()
-
 URLS = []
 
+
+# Start our session.
+re = requests.Session()
 # Log in
 req = re.post('https://mycourses.rit.edu/d2l/lp/auth/login/login.d2l', data={
     'username': args.u,
     'password': args.p
 })
 
-
-def mkdir_recursive(path):
-    sub_path = os.path.dirname(path)
-    if not os.path.exists(sub_path):
-        mkdir_recursive(sub_path)
-    if not os.path.exists(path):
-        os.mkdir(path)
-
-
-if req.status_code is 200:
-    print(" Logging into MyCourses ... M'Kay")
-else:
-    print("Fuck")
+if "Invalid Username" in req.text:
+    print("Fuck. MyCourses rejected your username and/or password")
+    print(req.text)
     exit()
-
-
-# Get Current Semester Courses
-# TODO!!!! MAKE SURE MYCOURSES IS SET TO THE CURRNET COUSE
+else:
+    print(" M'Kay")
 
 r = re.get('https://mycourses.rit.edu/d2l/home')
 soup = BeautifulSoup(r.text)
@@ -59,21 +57,46 @@ for line in xsrf:
         xsrf = line.split("\"")[16][:-1]
         print(" Xsrf is " + xsrf)
 
+
+# Switch to the current courses.
 data = {
     'widgetId': "11",
     "placeholderId$Value": "d2l_1_12_592",
-    'selectedRoleId': "618",
+    'selectedRoleId': "604",
     "_d2l_prc$headingLevel": "3",
     "_d2l_prc$scope": "",
     "_d2l_prc$hasActiveForm": "false",
-
     'isXhr': 'true',
     'requestId': '3',
-
     "d2l_referrer": xsrf,
 }
+re.post('https://mycourses.rit.edu/d2l/le/manageCourses/widget/myCourses/6605/ContentPartial?defaultLeftRightPixelLength=10&defaultTopBottomPixelLength=7', data=data)
+# Get the homepage again. We can be 100% sure that the current semester courses are listed here
+r = re.get('https://mycourses.rit.edu/d2l/home')
 
-# Switch to the other thing
+soup = BeautifulSoup(r.text)
+resp = soup.findAll(attrs={'class': 'd2l-collapsepane-content'})
+for tresp in resp:
+    uvA = tresp.findAll('a', attrs={'class':'d2l-left'})
+    for url in uvA:
+        url_code = url['href'].replace('/d2l/lp/ouHome/home.d2l?ou=', '')
+        title = url['title'].split(' ')[1]
+        URLS.append([url_code, title])
+        print(" Found " + title)
+
+
+# Now, switch to the other section that lists all the old courses.
+data = {
+    'widgetId': "11",
+    "placeholderId$Value": "d2l_1_12_592",
+    'selectedRoleId': "618",    # This will proably change in the future
+    "_d2l_prc$headingLevel": "3",
+    "_d2l_prc$scope": "",
+    "_d2l_prc$hasActiveForm": "false",
+    'isXhr': 'true',
+    'requestId': '3',
+    "d2l_referrer": xsrf,
+}
 r = re.post('https://mycourses.rit.edu/d2l/le/manageCourses/widget/myCourses/6605/ContentPartial?defaultLeftRightPixelLength=10&defaultTopBottomPixelLength=7', data=data)
 r = re.get('https://mycourses.rit.edu/d2l/home')
 soup = BeautifulSoup(r.text)
@@ -115,12 +138,9 @@ for course in URLS:
 
     # Download "Contents"
     print("  Downloading contents")
-    try:
-        if not os.path.isdir(DIR_TO_WERK + "/" + course[1]):
-            os.mkdir(DIR_TO_WERK + "/" + course[1])
-    except FileNotFoundError:   # This error happens when there are / in the course name
-        print ("  ERROR. Ah Fuck. I'll fix this in v0.0.2")
-        continue
+    path = DIR_TO_WERK + "/" + course[1]
+    if not os.path.isdir(path):
+        mkdir_recursive(path)
 
     for toc_dataset in toc_page_objs:
         pointer = toc_dataset.findAll('h2')[0].text
@@ -201,7 +221,7 @@ for course in URLS:
             continue
 
 
-        #print("   Downloading " + dropbox_item_name)
+        print("   Downloading " + dropbox_item_name)
 
         dropbox_dl_page = re.get("https://mycourses.rit.edu" + dropbox_item_page['href'])
         dropbox_dl_soup = BeautifulSoup(dropbox_dl_page.text)
