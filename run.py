@@ -14,6 +14,11 @@ def mkdir_recursive(path):
     if not os.path.exists(path):
         os.mkdir(path)
 
+def safeFilePath(path):
+    bad = ["<", ">", ":", "|", "?", "*"]
+    for char in bad:
+        path = path.replace(char, " ")
+    return path
 
 
 parser = argparse.ArgumentParser(description='Downloads all course contents from MyCourses')
@@ -140,8 +145,8 @@ for course in URLS:
     # Download "Contents"
     print("  Downloading contents")
     path = DIR_TO_WERK + "/" + course[1]
-    if not os.path.isdir(path):
-        mkdir_recursive(path)
+    if not os.path.isdir(safeFilePath(path)):
+        mkdir_recursive(safeFilePath(path))
 
     for toc_dataset in toc_page_objs:
         pointer = toc_dataset.findAll('h2')[0].text
@@ -154,8 +159,8 @@ for course in URLS:
 
             path = DIR_TO_WERK + "/" + course[1] + "/" + pointer + "/"
 
-            if not os.path.isdir(path):
-                mkdir_recursive(path)
+            if not os.path.isdir(safeFilePath(path)):
+                mkdir_recursive(safeFilePath(path))
 
             try:
                 name = unquote(file.headers['content-disposition'].split(' ')[2].split("\"")[1])
@@ -235,8 +240,8 @@ for course in URLS:
             file = re.get(url, stream=True)
 
             path = DIR_TO_WERK + "/" + course[1] + "/dropbox/" + dropbox_item_name + "/"
-            if not os.path.isdir(path):
-                mkdir_recursive(path)
+            if not os.path.isdir(safeFilePath(path)):
+                mkdir_recursive(safeFilePath(path))
 
             try:
                 name = unquote(file.headers['content-disposition'].split(' ')[2].split("\"")[1])
