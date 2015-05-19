@@ -44,7 +44,7 @@ if "Invalid Username" in req.text:
     print("Fuck. MyCourses rejected your username and/or password")
     exit()
 else:
-    print(" M'Kay")
+    print(" Login M'Kay")
 
 r = re.get('https://mycourses.rit.edu/d2l/home')
 soup = BeautifulSoup(r.text)
@@ -73,15 +73,17 @@ re.post('https://mycourses.rit.edu/d2l/le/manageCourses/widget/myCourses/6605/Co
 # Get the homepage again. We can be 100% sure that the current semester courses are listed here
 r = re.get('https://mycourses.rit.edu/d2l/home')
 
+
+
 soup = BeautifulSoup(r.text)
 resp = soup.findAll(attrs={'class': 'd2l-collapsepane-content'})
-for tresp in resp:
-    uvA = tresp.findAll('a', attrs={'class':'d2l-left'})
-    for url in uvA:
-        url_code = url['href'].replace('/d2l/lp/ouHome/home.d2l?ou=', '')
-        title = url['title'].split(' ')[1]
-        URLS.append([url_code, title])
-        print(" Found " + title)
+
+uvA = resp[0].findAll('a', attrs={'class':'d2l-left'})
+for url in uvA:
+    url_code = url['href'].replace('/d2l/lp/ouHome/home.d2l?ou=', '')
+    title = url['title'].split(' ')[1]
+    URLS.append([url_code, title])
+    print(" Found " + title)
 
 
 # Now, switch to the other section that lists all the old courses.
