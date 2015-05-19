@@ -6,7 +6,7 @@ import os
 
 import pprint
 
-DIR_TO_WERK = "./<DOWNLOAD DIRECTORY>"  # THIS DIRECTORY MUST EXIST
+DIR_TO_WERK = "./mycourses"  # THIS DIRECTORY MUST EXIST
 
 re = requests.Session()
 
@@ -35,8 +35,6 @@ soup = BeautifulSoup(r.text)
 xsrf = str(soup.findAll("script")[-1]).splitlines()
 for line in xsrf:
     if "D2L.LP.Web.Authentication.Xsrf.Init" in line:
-        print(line)
-        #print(line[-50:-18])
         xsrf = line.split("\"")[16][:-1]
         print(" Xsrf is " + xsrf)
         # "43":"{\"_type\":\"func\",\"N\":\"D2L.LP.Web.Authentication.Xsrf.Init\",\"P\":[\"d2l_referrer\",\"LGTVl3f1rS91eHLciWDRhpk9okic8uWr\",980578668]}",
@@ -103,8 +101,11 @@ for course in URLS:
 
     # Make the class directory
 
-    print(" \nDownloading " + course[1])
+    print("\n Downloading " + course[1])
 
+
+    # Download "Contents"
+    print("  Downloading contents")
     try:
         if not os.path.isdir(DIR_TO_WERK + "/" + course[1]):
             os.mkdir(DIR_TO_WERK + "/" + course[1])
@@ -140,3 +141,86 @@ for course in URLS:
             except Exception as e:
                 print("  ERROR. ", e, file_id)
 
+    # Download "Dropbox"
+
+    print ("  Downloading Dropbox Files")
+
+    if course[1] == "PHIL.102.15":
+        print(" STAHP! ")
+        continue
+
+    dropbox_resp = re.get("https://mycourses.rit.edu/d2l/lms/dropbox/user/folders_list.d2l?ou=" + course[0]  + "&isprv=0")
+    dropbox_soup = BeautifulSoup(dropbox_resp.text)
+
+    dropbox_table = dropbox_soup.find(id='z_b').findAll('tr')
+
+    if len(dropbox_table) is 1:
+        print("   No dropbox for this course")
+        continue
+
+
+    for dropbox_tr in dropbox_table:
+
+
+        # Get the title of the thing
+        if dropbox_tr.text == "     ":
+            continue
+
+        dropbox_item_title = dropbox_tr.findAll('th', attrs={'class': 'd_ich'})
+        #print(dropbox_item_title)
+
+        if len(dropbox_item_title) == 0:
+            continue
+        elif len(dropbox_item_title[0].find('a')) == 1:
+            dropbox_item_name = dropbox_item_title[0].find('a').text
+        else:
+            dropbox_item_name = dropbox_tr.find('label').text
+
+
+        dropbox_item_page = dropbox_tr.findAll('a')
+
+        WE_GUCCI = False
+
+        for link in dropbox_item_page:
+            if "folders_history.d2l" in link['href']:
+
+                dropbox_item_page = link
+                WE_GUCCI = True
+
+        if not WE_GUCCI:
+            continue
+
+
+        print("   Downloading " + dropbox_item_name)
+
+        dropbox_dl_page = re.get("https://mycourses.rit.edu" + dropbox_item_page['href'])
+        dropbox_dl_soup = BeautifulSoup(dropbox_dl_page.text)
+
+        # Find all download links
+        dropbox_dl_links = dropbox_dl_soup.findAll('span', attrs={'class': 'dfl'})
+
+        for dropbox_dl_link in dropbox_dl_links:
+            url = "https://mycourses.rit.edu" + dropbox_dl_link.find('a')['href']
+            file = re.get(url, stream=True)
+
+            path = DIR_TO_WERK + "/" + course[1] + "/dropbox/"
+            if not os.path.isdir(path):
+                os.mkdir(path)
+
+            path = DIR_TO_WERK + "/" + course[1] + "/dropbox/" + dropbox_item_name + "/"
+            if not os.path.isdir(path):
+                os.mkdir(path)
+
+            try:
+                name = file.headers['content-disposition'].split(' ')[2].split("\"")[1]
+                path += name
+
+                print("    Downloading " + name + " to " + path)
+
+                with open(path, 'wb') as f:
+                    for chunk in file.iter_content(chunk_size=1024):
+                        if chunk: # filter out keep-alive new chunks
+                            f.write(chunk)
+                            f.flush()
+            except Exception as e:
+                print("  ERROR. ", e)
