@@ -4,6 +4,7 @@ import re
 import os
 from urllib.parse import unquote
 import argparse
+import sys
 
 
 # basically, mkdir -p /blah/blah/blah
@@ -20,6 +21,10 @@ def safeFilePath(path):
         path = path.replace(char, " ")
     return path
 
+## Check Python Version
+if sys.version_info[0] < 3:
+    print("I need python 3+")
+    exit()
 
 parser = argparse.ArgumentParser(description='Downloads all course contents from MyCourses')
 parser.add_argument('-u', help='Your RIT Username that you use for MyCourses')
