@@ -34,7 +34,7 @@ parser.add_argument('-d', help='The directory where the files will be downloaded
 args = parser.parse_args()
 
 if args.u is None or args.p is None or args.d is None:
-    print("Invalid usage. see run.py -h")
+    print("Invalid usage. see mycoursesdownloader.py -h")
     exit()
 
 DIR_TO_WERK = "./" + args.d  # THIS DIRECTORY MUST EXIST
