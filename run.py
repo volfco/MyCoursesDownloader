@@ -42,7 +42,6 @@ req = re.post('https://mycourses.rit.edu/d2l/lp/auth/login/login.d2l', data={
 
 if "Invalid Username" in req.text:
     print("Fuck. MyCourses rejected your username and/or password")
-    print(req.text)
     exit()
 else:
     print(" M'Kay")
