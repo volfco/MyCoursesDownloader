@@ -166,9 +166,9 @@ for course in URLS:
                 name = unquote(file.headers['content-disposition'].split(' ')[2].split("\"")[1])
                 path += name
 
-                print("   Downloading " + name + " to " + path)
+                print("   Downloading " + name + " to " + safeFilePath(path))
 
-                with open(path, 'wb') as f:
+                with open(safeFilePath(path), 'wb') as f:
                     for chunk in file.iter_content(chunk_size=1024):
                         if chunk: # filter out keep-alive new chunks
                             f.write(chunk)
@@ -247,9 +247,9 @@ for course in URLS:
                 name = unquote(file.headers['content-disposition'].split(' ')[2].split("\"")[1])
                 path += name
 
-                print("   Downloading " + name + " to " + path)
+                print("   Downloading " + name + " to " + safeFilePath(path))
 
-                with open(path, 'wb') as f:
+                with open(safeFilePath(path), 'wb') as f:
                     for chunk in file.iter_content(chunk_size=1024):
                         if chunk: # filter out keep-alive new chunks
                             f.write(chunk)
