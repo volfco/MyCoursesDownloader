@@ -17,5 +17,7 @@ MyCoursesDownloader is a python script that downloads the following from MyCours
 **Usage**
 
 > python mycoursesdownloader.py -u cxm7688 -d mycourses
+
 > -u RIT Username
+
 > -d Directory to download files to
