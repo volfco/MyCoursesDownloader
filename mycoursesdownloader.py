@@ -41,7 +41,7 @@ def mkdir_recursive(path):
 
 def safeFilePath(path):
     ## Fucking unicode
-    path = path.decode('unicode_escape').encode('ascii', 'ignore')
+    path = str(path.encode('ascii', 'ignore'))
 
     bad = ["<", ">", ":", "|", "?", "*", " / ", " \ "]
     for char in bad:
@@ -109,8 +109,6 @@ data = {
 re.post('https://mycourses.rit.edu/d2l/le/manageCourses/widget/myCourses/6605/ContentPartial?defaultLeftRightPixelLength=10&defaultTopBottomPixelLength=7', data=data)
 # Get the homepage again. We can be 100% sure that the current semester courses are listed here
 r = re.get('https://mycourses.rit.edu/d2l/home')
-
-
 
 soup = BeautifulSoup(r.text)
 resp = soup.findAll(attrs={'class': 'd2l-collapsepane-content'})
