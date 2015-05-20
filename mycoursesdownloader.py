@@ -41,6 +41,7 @@ def mkdir_recursive(path):
 
 def safeFilePath(path):
     ## Fucking unicode
+    path = ''.join([i if ord(i) < 128 else ' ' for i in path])
 
     bad = ["<", ">", ":", "|", "?", "*", " / ", " \ "]
     for char in bad:
