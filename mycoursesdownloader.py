@@ -29,6 +29,7 @@ import os
 from urllib.parse import unquote
 import argparse
 import sys
+import getpass
 
 
 # basically, mkdir -p /blah/blah/blah
@@ -55,14 +56,15 @@ if sys.version_info[0] < 3:
 
 parser = argparse.ArgumentParser(description='Downloads all course contents from MyCourses')
 parser.add_argument('-u', help='Your RIT Username that you use for MyCourses')
-parser.add_argument('-p', help='Your RIT Password that you use for MyCourses')
 parser.add_argument('-d', help='The directory where the files will be downloaded')
 
 args = parser.parse_args()
 
-if args.u is None or args.p is None or args.d is None:
+if args.u is None or args.d is None:
     print("Invalid usage. see mycoursesdownloader.py -h")
     exit()
+
+password = getpass.getpass("Enter your mycourses password:")
 
 DIR_TO_WERK = "./" + args.d  # THIS DIRECTORY MUST EXIST
 
@@ -74,7 +76,7 @@ re = requests.Session()
 # Log in
 req = re.post('https://mycourses.rit.edu/d2l/lp/auth/login/login.d2l', data={
     'username': args.u,
-    'password': args.p
+    'password': password
 })
 
 if "Invalid Username" in req.text:
