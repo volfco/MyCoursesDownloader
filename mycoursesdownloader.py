@@ -40,6 +40,9 @@ def mkdir_recursive(path):
         os.mkdir(path)
 
 def safeFilePath(path):
+    ## Fucking unicode
+    path = path.decode('unicode_escape').encode('ascii', 'ignore')
+
     bad = ["<", ">", ":", "|", "?", "*", " / ", " \ "]
     for char in bad:
         path = path.replace(char, " ")
