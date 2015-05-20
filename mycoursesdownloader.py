@@ -64,12 +64,11 @@ if args.u is None or args.d is None:
     print("Invalid usage. see mycoursesdownloader.py -h")
     exit()
 
-password = getpass.getpass("Enter your mycourses password:")
+password = getpass.getpass("Enter your RIT password: ")
 
 DIR_TO_WERK = "./" + args.d  # THIS DIRECTORY MUST EXIST
 
-URLS = []
-
+URLS = []   # [("22222", "PLOS.140"), ("11111", "NSSA.220")]
 
 # Start our session.
 re = requests.Session()
@@ -80,7 +79,7 @@ req = re.post('https://mycourses.rit.edu/d2l/lp/auth/login/login.d2l', data={
 })
 
 if "Invalid Username" in req.text:
-    print("Fuck. MyCourses rejected your username and/or password")
+    print("MyCourses rejected your username and/or password")
     exit()
 else:
     print(" Login M'Kay")
@@ -119,7 +118,7 @@ uvA = resp[0].findAll('a', attrs={'class':'d2l-left'})
 for url in uvA:
     url_code = url['href'].replace('/d2l/lp/ouHome/home.d2l?ou=', '')
     title = url['title'].split(' ')[1]
-    URLS.append([url_code, title])
+    URLS.append((url_code, title))
     print(" Found " + title)
 
 
@@ -144,11 +143,15 @@ for tresp in resp:
     for url in uvA:
         url_code = url['href'].replace('/d2l/lp/ouHome/home.d2l?ou=', '')
         title = url['title'].split(' ')[1]
-        URLS.append([url_code, title])
+        URLS.append((url_code, title))
         print(" Found " + title)
 
 
 print("\n I found {} classes\n".format(str(len(URLS))))
+
+
+# Check for duplicate entries.
+URLS = set(tuple(element) for element in URLS)
 
 
 # -- Download that shit --
@@ -173,15 +176,17 @@ for course in URLS:
 
     print("\n Downloading " + course[1])
 
-
     # Download "Contents"
     print("  Downloading contents")
-    path = DIR_TO_WERK + "/" + course[1]
+    path = DIR_TO_WERK + "/" + course[1].replace("/", ".")    # course[1] is the course code, like NSSA.220
+
+
     if not os.path.isdir(safeFilePath(path)):
         mkdir_recursive(safeFilePath(path))
 
     for toc_dataset in toc_page_objs:
-        pointer = toc_dataset.findAll('h2')[0].text
+        # This is what the folder will be called. I'm replacing the / with a space so we dont get
+        pointer = toc_dataset.findAll('h2')[0].text.replace("/", ".")
 
         tmp_links = toc_dataset.findAll(attrs={'class': 'd2l-link-main'})
         for link in tmp_links:
@@ -195,6 +200,7 @@ for course in URLS:
                 mkdir_recursive(safeFilePath(path))
 
             try:
+
                 name = unquote(file.headers['content-disposition'].split(' ')[2].split("\"")[1])
                 path += name
 
@@ -209,7 +215,6 @@ for course in URLS:
                 print("  ERROR. ", e, file_id)
 
     # Download "Dropbox"
-
     print ("  Downloading Dropbox Files")
 
     # There are file attachments in the dropbox
@@ -221,34 +226,29 @@ for course in URLS:
     dropbox_soup = BeautifulSoup(dropbox_resp.text)
 
     dropbox_table = dropbox_soup.find(id='z_b').findAll('tr')
-
     if len(dropbox_table) is 1:
         print("   No dropbox for this course")
         continue
 
 
     for dropbox_tr in dropbox_table:
-
-
         # Get the title of the thing
         if dropbox_tr.text.strip() == "":
             continue
 
         dropbox_item_title = dropbox_tr.findAll('th', attrs={'class': 'd_ich'})
-        #print(dropbox_item_title)
 
         if len(dropbox_item_title) == 0:
             continue
         elif dropbox_item_title[0].find('a') is not None and len(dropbox_item_title[0].find('a')) == 1:
-            dropbox_item_name = dropbox_item_title[0].find('a').text
+            dropbox_item_name = dropbox_item_title[0].find('a').text.replace("/", ".")
         else:
-            dropbox_item_name = dropbox_tr.find('label').text
+            dropbox_item_name = dropbox_tr.find('label').text.replace("/", ".")
 
 
         dropbox_item_page = dropbox_tr.findAll('a')
 
         WE_GUCCI = False
-
         for link in dropbox_item_page:
             if "folders_history.d2l" in link['href']:
 
@@ -260,7 +260,6 @@ for course in URLS:
 
 
         print("   Downloading " + dropbox_item_name)
-
         dropbox_dl_page = re.get("https://mycourses.rit.edu" + dropbox_item_page['href'])
         dropbox_dl_soup = BeautifulSoup(dropbox_dl_page.text)
 
@@ -288,3 +287,8 @@ for course in URLS:
                             f.flush()
             except Exception as e:
                 print("  ERROR. ", e, " Maybe this dropbox is inaccessable?")
+
+
+    print(" Finished. \n")
+
+print("End Of Line.")
