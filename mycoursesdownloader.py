@@ -204,7 +204,7 @@ for course in URLS:
                 name = unquote(file.headers['content-disposition'].split(' ')[2].split("\"")[1])
                 path += name
 
-                print("   Downloading " + name + " to " + safeFilePath(path))
+                print("   Downloading " + safeFilePath(name) + " to " + safeFilePath(path))
 
                 with open(safeFilePath(path), 'wb') as f:
                     for chunk in file.iter_content(chunk_size=1024):
@@ -259,7 +259,7 @@ for course in URLS:
             continue
 
 
-        print("   Downloading " + dropbox_item_name)
+        print("   Downloading " + safeFilePath(dropbox_item_name))
         dropbox_dl_page = re.get("https://mycourses.rit.edu" + dropbox_item_page['href'])
         dropbox_dl_soup = BeautifulSoup(dropbox_dl_page.text)
 
@@ -278,7 +278,7 @@ for course in URLS:
                 name = unquote(file.headers['content-disposition'].split(' ')[2].split("\"")[1])
                 path += name
 
-                print("   Downloading " + name + " to " + safeFilePath(path))
+                print("   Downloading " + safeFilePath(name) + " to " + safeFilePath(path))
 
                 with open(safeFilePath(path), 'wb') as f:
                     for chunk in file.iter_content(chunk_size=1024):
