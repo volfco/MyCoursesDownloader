@@ -30,6 +30,7 @@ from urllib.parse import unquote
 import argparse
 import sys
 import getpass
+import json
 
 
 # basically, mkdir -p /blah/blah/blah
@@ -98,8 +99,7 @@ for line in xsrf:
 # Switch to the current courses.
 data = {
     'widgetId': "11",
-    "placeholderId$Value": "d2l_1_12_592",
-    'selectedRoleId': "604",
+    "_d2l_prc$childScopeCounters": "filtersData:0",
     "_d2l_prc$headingLevel": "3",
     "_d2l_prc$scope": "",
     "_d2l_prc$hasActiveForm": "false",
@@ -107,13 +107,10 @@ data = {
     'requestId': '3',
     "d2l_referrer": xsrf,
 }
-re.post('https://mycourses.rit.edu/d2l/le/manageCourses/widget/myCourses/6605/ContentPartial?defaultLeftRightPixelLength=10&defaultTopBottomPixelLength=7', data=data)
-# Get the homepage again. We can be 100% sure that the current semester courses are listed here
-r = re.get('https://mycourses.rit.edu/d2l/home')
-
-soup = BeautifulSoup(r.text)
+r = re.post('https://mycourses.rit.edu/d2l/le/manageCourses/widget/myCourses/6605/ContentPartial?defaultLeftRightPixelLength=10&defaultTopBottomPixelLength=7', data=data)
+# d2l changed to ajax. woo!
+soup = BeautifulSoup(json.loads(r.text.replace("while(1);", ""))['Payload']['Html'])
 resp = soup.findAll(attrs={'class': 'd2l-collapsepane-content'})
-
 uvA = resp[0].findAll('a', attrs={'class':'d2l-left'})
 for url in uvA:
     url_code = url['href'].replace('/d2l/lp/ouHome/home.d2l?ou=', '')
