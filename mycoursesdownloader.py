@@ -222,8 +222,12 @@ for course in URLS:
     dropbox_resp = re.get("https://mycourses.rit.edu/d2l/lms/dropbox/user/folders_list.d2l?ou=" + course[0]  + "&isprv=0")
     dropbox_soup = BeautifulSoup(dropbox_resp.text)
 
-    dropbox_table = dropbox_soup.find(id='z_b').findAll('tr')
-    if len(dropbox_table) is 1:
+    try:
+        dropbox_table = dropbox_soup.find(id='z_b').findAll('tr')
+    except AttributeError:
+        dropbox_table = []
+
+    if len(dropbox_table) is 1 or len(dropbox_table) is 0:
         print("   No dropbox for this course")
         continue
 
