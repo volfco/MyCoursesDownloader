@@ -307,6 +307,6 @@ if __name__ == "__main__":
                     output(level="Error", message="Error: {}. File ID: {}".format(e, file_id))
                     output(level="Debug", message="Path " + url)
 
-    print(TOTAL_BYTES / 1024 / 1024)  # KB / MB
+    MB = TOTAL_BYTES / 1024 / 1024
 
-    print("End Of Line.")
+    output(level="Cool", message="{0}MB Downloaded".format(round(MB, 2)))
