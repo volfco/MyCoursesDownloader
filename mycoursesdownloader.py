@@ -54,6 +54,37 @@ def safeFilePath(path):
 def output(level="Info", message=""):
     print("[{0}][{1:>8}]  {2}".format(str(datetime.datetime.now()), level, message))
 
+
+def download(url, path):
+    SIZE = 0
+    file = re.get(url, stream=True)
+
+    if file.status_code == 302:  # D2L, you don't fucking redirect a 404/403 error.
+        output(level="Error", message="Requested file is Not Found or Forbidden")
+
+    if not os.path.isdir(safeFilePath(path)):
+        output(level="Info", message="Directory does not exist.")
+        output(level="Debug", message=safeFilePath(path))
+        mkdir_recursive(safeFilePath(path))
+    try:
+        name = unquote(file.headers['content-disposition'].split(' ')[2].split("\"")[1])
+        path += name
+
+        output(level="Progress", message="Downloading " + safeFilePath(name))
+
+        with open(safeFilePath(path), 'wb') as f:
+            for chunk in file.iter_content(chunk_size=1024):
+                if chunk:  # filter out keep-alive new chunks
+                    f.write(chunk)
+                    f.flush()
+                    SIZE += 1024
+
+    except Exception as e:
+        output(level="Error", message="Error: {}. File ID: {}".format(e, file_id))
+        output(level="Debug", message="Path " + url)
+
+
+# Start main program
 if __name__ == "__main__":
 
     if sys.version_info[0] < 3:
@@ -201,32 +232,9 @@ if __name__ == "__main__":
             for link in tmp_links:
                 file_id = link['href'].split('/')[6]
                 url = "https://mycourses.rit.edu/d2l/le/content/"+ course[0] +"/topics/files/download/" + file_id  + "/DirectFileTopicDownload"
-                file = re.get(url, stream=True)
-
-                if file.status_code == 302:  # D2L, you don't fucking redirect a 404/403 error.
-                    output(level="Error", message="Requested file is 404")
-
                 path = workingDirectory + "/" + course[1] + "/" + pointer + "/"
 
-                if not os.path.isdir(safeFilePath(path)):
-                    output(level="Info", message="Directory does not exist.")
-                    output(level="Debug", message=safeFilePath(path))
-                    mkdir_recursive(safeFilePath(path))
-                try:
-                    name = unquote(file.headers['content-disposition'].split(' ')[2].split("\"")[1])
-                    path += name
-
-                    output(level="Progress", message="Downloading " + safeFilePath(name))
-
-                    with open(safeFilePath(path), 'wb') as f:
-                        for chunk in file.iter_content(chunk_size=1024):
-                            if chunk:  # filter out keep-alive new chunks
-                                f.write(chunk)
-                                f.flush()
-                                TOTAL_BYTES += 1024
-                except Exception as e:
-                    output(level="Error", message="Error: {}. File ID: {}".format(e, file_id))
-                    output(level="Debug", message="Path " + url)
+                TOTAL_BYTES += download(url, path)
 
         # Download "Dropbox"
         if course[1] == "PHIL.102.15":
@@ -283,29 +291,9 @@ if __name__ == "__main__":
             for dropbox_dl_link in dropbox_dl_links:
                 url = "https://mycourses.rit.edu" + dropbox_dl_link.find('a')['href']
                 file = re.get(url, stream=True)
-
-                if file.status_code == 302:
-                    output(level="Error", message="Requested file is 404")
-
                 path = workingDirectory + "/" + course[1] + "/dropbox/" + dropbox_item_name + "/"
-                if not os.path.isdir(safeFilePath(path)):
-                    mkdir_recursive(safeFilePath(path))
 
-                try:
-                    name = unquote(file.headers['content-disposition'].split(' ')[2].split("\"")[1])
-                    path += name
-
-                    output(level="Progress", message="Downloading " + safeFilePath(name))
-
-                    with open(safeFilePath(path), 'wb') as f:
-                        for chunk in file.iter_content(chunk_size=1024):
-                            if chunk:  # filter out keep-alive new chunks
-                                f.write(chunk)
-                                f.flush()
-                                TOTAL_BYTES += 1024
-                except Exception as e:
-                    output(level="Error", message="Error: {}. File ID: {}".format(e, file_id))
-                    output(level="Debug", message="Path " + url)
+                TOTAL_BYTES += download(url, path)
 
     MB = TOTAL_BYTES / 1024 / 1024
 
