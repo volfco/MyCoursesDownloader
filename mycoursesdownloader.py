@@ -205,8 +205,10 @@ if __name__ == "__main__":
     else:
         pass
 
+    # Keep track of the total transfer size
+    TOTAL_BYTES = 0
+    
     # Loop through each course
-    TOTAL_BYTES = 0;
     for course in URLS:
         re.get("https://mycourses.rit.edu/d2l/le/content/" + course[0] + "/PartialMainView?identifier=TOC&moduleTitle=Table+of+Contents&_d2l_prc%24headingLevel=2&_d2l_prc%24scope=&_d2l_prc%24hasActiveForm=false&isXhr=true&requestId=4")
 
@@ -253,7 +255,6 @@ if __name__ == "__main__":
             output(level="Info", message="No dropbox for {}".format(course[1]))
             continue
 
-
         for dropbox_tr in dropbox_table:
             # Get the title of the thing
             if dropbox_tr.text.strip() == "":
@@ -268,13 +269,11 @@ if __name__ == "__main__":
             else:
                 dropbox_item_name = dropbox_tr.find('label').text.replace("/", ".")
 
-
             dropbox_item_page = dropbox_tr.findAll('a')
 
             WE_GUCCI = False
             for link in dropbox_item_page:
                 if "folders_history.d2l" in link['href']:
-
                     dropbox_item_page = link
                     WE_GUCCI = True
 
