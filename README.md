@@ -1,5 +1,5 @@
 # MyCoursesDownloader
-v0.2
+v0.2.1
 
 **What is it?**
 
@@ -33,7 +33,6 @@ MyCoursesDownloader is a python script that downloads the following from MyCours
 * Download Quizzes
 * Download Announcements
 * Refactor Each subsection of MyCourses into its own module
-* Get Attached Feedback for Dropbox assignments
 * Handle the Edge Case in PHIL.103
 * Remove Static URL so other schools can use this
 * Get Ready for the summer upgrade (It has Shibboleth now [which I can already bypass])
