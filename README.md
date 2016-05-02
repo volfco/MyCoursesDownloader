@@ -1,5 +1,5 @@
 # MyCoursesDownloader
-v0.2.1
+v0.2.2
 
 **What is it?**
 
@@ -18,6 +18,16 @@ MyCoursesDownloader is a python script that downloads the following from MyCours
 `-u RIT Username`
 
 `-d Directory`
+
+`--skip-review` Allows you to skip the review process prompt
+
+`--force-review` Forces you to review each class
+
+`--download-classes class class class...` Allows you to specify a list of classes to download. These can be partial classes such as NSSA.24, and they will be matched to NSSA.241, NSSA.245, and so on.
+
+`--skip-classes class class class...` Allows you to specify a list of classes to skip. These can be partial classes such as NSSA.24, and they will be matched to NSSA.241, NSSA.245, and so on.
+
+
 ###Windows
 1. Install PIP requirements `C:\Python34\Scripts\pip.exe install -r .\requirements.txt`
 2. Run `C:\Python34\python.exe .\mycoursesdownloader.py -u cxm7688 -d mycourses`
