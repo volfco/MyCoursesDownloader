@@ -39,11 +39,7 @@ D2L_BASEURL = "https://mycourses.rit.edu"
 
 # basically, mkdir -p /blah/blah/blah
 def mkdir_recursive(path):
-    sub_path = os.path.dirname(path)
-    if not os.path.exists(sub_path):
-        mkdir_recursive(sub_path)
-    if not os.path.exists(path):
-        os.mkdir(path)
+    os.makedirs(path, exist_ok=True)
 
 def safeFilePath(path):
     ## Fucking unicode
