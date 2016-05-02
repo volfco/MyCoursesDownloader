@@ -61,7 +61,7 @@ def output(level="Info", message=""):
 
 def download(url, path):
     SIZE = 0
-    file = re.get(url, stream=True)
+    file = session.get(url, stream=True)
 
     if file.status_code == 302:  # D2L, you don't fucking redirect a 404/403 error.
         output(level="Error", message="Requested file is Not Found or Forbidden")
@@ -87,6 +87,8 @@ def download(url, path):
         output(level="Error", message="Error: {}. File ID: {}".format(e, file_id))
         output(level="Debug", message="Path " + url)
 
+    return SIZE
+
 
 # Start main program
 if __name__ == "__main__":
@@ -102,6 +104,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Downloads all course contents from MyCourses')
     parser.add_argument('-u', help='Your RIT Username that you use for MyCourses')
     parser.add_argument('-d', help='The directory where the files will be downloaded')
+    #parser.add_argument('--force-review')
+    #parser.add_argument('--skip-review')
+    #parser.add_argument('--skip-classes')
 
     args = parser.parse_args()
 
@@ -225,7 +230,7 @@ if __name__ == "__main__":
         #
         # Download all files in "content"
         #
-        session.get(D2L_BASEURL + "/d2l/le/content/" + course[0] + "/PartialMainView?identifier=TOC&moduleTitle=Table+of+Contents&_d2l_prc%24headingLevel=2&_d2l_prc%24scope=&_d2l_prc%24hasActiveForm=false&isXhr=true&requestId=4")
+        """        session.get(D2L_BASEURL + "/d2l/le/content/" + course[0] + "/PartialMainView?identifier=TOC&moduleTitle=Table+of+Contents&_d2l_prc%24headingLevel=2&_d2l_prc%24scope=&_d2l_prc%24hasActiveForm=false&isXhr=true&requestId=4")
 
         toc_page = session.get(D2L_BASEURL + "/d2l/le/content/" + course[0] + "/Home")
         toc_page_soup = BeautifulSoup(toc_page.text, "html.parser")
@@ -252,7 +257,7 @@ if __name__ == "__main__":
                 path = workingDirectory + "/" + course[1] + "/" + pointer + "/"
 
                 TOTAL_BYTES += download(url, path)
-
+"""
         #
         # Download all files in Dropbox
         #
@@ -261,7 +266,7 @@ if __name__ == "__main__":
             continue
 
         dropbox_resp = session.get(D2L_BASEURL + "/d2l/lms/dropbox/user/folders_list.d2l?ou=" + course[0]  + "&isprv=0")
-        dropbox_soup = BeautifulSoup(dropbox_resp.text)
+        dropbox_soup = BeautifulSoup(dropbox_resp.text, "html.parser")
 
         try:
             dropbox_table = dropbox_soup.find(id='z_b').findAll('tr')
@@ -299,7 +304,7 @@ if __name__ == "__main__":
 
             output(level="Info", message="Processing Dropbox for" + safeFilePath(dropbox_item_name))
             dropbox_dl_page = session.get(D2L_BASEURL + dropbox_item_page['href'])
-            dropbox_dl_soup = BeautifulSoup(dropbox_dl_page.text)
+            dropbox_dl_soup = BeautifulSoup(dropbox_dl_page.text, "html.parser")
 
             # Find all download links
             dropbox_dl_links = dropbox_dl_soup.findAll('span', attrs={'class': 'dfl'})
@@ -313,21 +318,27 @@ if __name__ == "__main__":
             #
             # Download Dropbox Feedback
             #
-            feedback_link = dropbox_tr.findAll("tr")[3].find("a")["href"]
-            if feedback_link is None:
-                continue
-                
-            feedback_page = session.get(feedback_link)
-            feedback_content = BeautifulSoup(feedback_page, "html.parser")
-            # Dropboxes can have multiple feedback items, so I need a way to test it.
-            # ... Fuck it. I'll just search for the download URL
-            feedback_all_links = feedback_content.findAll("span", {"class": "dfl"})
-            feedback_all_links.pop() # Remove the first link, which is the initial file
-            for feedback_file in feedback_all_links:
-                feedback_file_url = D2L_BASEURL + feedback_file.find("a")["href"]
-                path = workingDirectory + "/" + course[1] + "/Dropbox/" + dropbox_item_name + "/"
+            output(level="Info", message="Processing Dropbox Feedback for " + safeFilePath(dropbox_item_name))
+            feedback_link = dropbox_tr.findAll("a")
+            for link in feedback_link:
+                if link["href"] is not None and "feedback" in link["href"]:
+                    feedback_link = D2L_BASEURL + link["href"]
+                    break
 
-                TOTAL_BYTES += download(feedback_file_url, path)
+            # If we couldn't find a feedback link, then skip
+            if type(feedback_link) is str:
+                feedback_page = session.get(feedback_link)
+                feedback_content = BeautifulSoup(feedback_page.text, "html.parser")
+                # Dropboxes can have multiple feedback items, so I need a way to test it.
+                # ... Fuck it. I'll just search for the download URL. Make sure we're searching in the feedback page
+                feedback_all_links = feedback_content.find("table", {"class": "d_FG"}).findAll("span", {"class": "dfl"})
+                for feedback_file in feedback_all_links:
+                    feedback_file_url = D2L_BASEURL + feedback_file.find("a")["href"]
+                    path = workingDirectory + "/" + course[1] + "/Dropbox_Feedback/" + dropbox_item_name + "/"
+
+                    TOTAL_BYTES += download(feedback_file_url, path)
+            else:
+                output(level="Info", message="No Feedback")
 
     MB = TOTAL_BYTES / 1024 / 1024
 
