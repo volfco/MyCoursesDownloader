@@ -314,6 +314,9 @@ if __name__ == "__main__":
             # Download Dropbox Feedback
             #
             feedback_link = dropbox_tr.findAll("tr")[3].find("a")["href"]
+            if feedback_link is None:
+                continue
+                
             feedback_page = session.get(feedback_link)
             feedback_content = BeautifulSoup(feedback_page, "html.parser")
             # Dropboxes can have multiple feedback items, so I need a way to test it.
