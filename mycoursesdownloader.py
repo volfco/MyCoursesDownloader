@@ -192,7 +192,7 @@ if __name__ == "__main__":
         uvA = tresp.findAll('a', attrs={'class':'d2l-left'})
         for url in uvA:
             url_code = url['href'].replace('/d2l/lp/ouHome/home.d2l?ou=', '')
-            title = url['title'].split(' ')[1]
+            title = url['title'].split(' ')[1].replace("/","_")
             URLS.append((url_code, title))
 
     # Check for duplicate entries.
