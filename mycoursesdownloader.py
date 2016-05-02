@@ -104,10 +104,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Downloads all course contents from MyCourses')
     parser.add_argument('-u', help='Your RIT Username that you use for MyCourses')
     parser.add_argument('-d', help='The directory where the files will be downloaded')
-    #parser.add_argument('--force-review', help="Force review of each class")
-    #parser.add_argument('--skip-review', help="Don't prompt for class review")
-    #parser.add_argument('--skip-classes', help="List of Classes to skip. Entered text will be matched to the start of "
-                                               #"the string. So, `NSSA.24` will be matched to /NSSA\.24(.*)/g")
+    parser.add_argument('--force-review', help="Force review of each class", action='store_true')
+    parser.add_argument('--skip-review', help="Don't prompt for class review", action='store_true')
+    parser.add_argument('--skip-classes', help="List of Classes to skip. Enter a class followed by a space. Entered "
+                                               "text will be matched to the start of  the string. So, `NSSA.24` will be"
+                                               " matched to /NSSA\.24(.*)/g", nargs='+')
+    parser.add_argument('--download-classes', nargs='+', help='List of classes to download. Enter a class followed by'
+                                                              ' a space. Text will be matched to the start of the '
+                                                              'string.')
 
     args = parser.parse_args()
 
@@ -198,14 +202,51 @@ if __name__ == "__main__":
     # Check for duplicate entries.
     URLS = set(tuple(element) for element in URLS)
 
-    # List the classes
-    for rit_class in URLS:
-        output(level="Info", message=("Found " + rit_class[1]))
-    print("\nI found {} classes.".format(str(len(URLS))))
-    print("Would you like to review them?")
-    print("Press r followed by enter to review or just press enter...")
+    output(level="Info", message="Found {} classes.".format(str(len(URLS))))
 
-    user_response = input("? ")
+    if args.download_classes is not None:
+        output(level="Info", message="Only downloading selected classes")
+        # Assume skipping review
+        args.skip_review = True
+        # We need to loop through each course and each allow_class
+        TURLS = []
+        pattern = "|".join(map(str, args.download_classes))
+        for rit_class in URLS:
+            if re.match(pattern, rit_class[1]) is not None:    # We found a match
+                TURLS.append(rit_class)
+
+        output(level="Info", message=("Deleted " + str(len(URLS) - len(TURLS))))
+        URLS = []
+        URLS = TURLS
+
+    if args.skip_classes is not None:
+        args.skip_review = True
+        # We need to loop through each course and each skip_classes
+        output(level="Info", message="Removing classes")
+        TURLS = []
+        pattern = "|".join(map(str, args.skip_classes))
+        for rit_class in URLS:
+            if re.match(pattern, rit_class[1]) is None:    # We didn't found a match
+                TURLS.append(rit_class)
+
+        output(level="Info", message=("Deleted " + str(len(URLS) - len(TURLS))))
+        URLS = []
+        URLS = TURLS
+
+    output(level="Info", message="Found {} classes.".format(str(len(URLS))))
+
+    if args.force_review:
+        output(level="Debug", message="Reviewing Courses")
+        user_response = "r"
+    elif args.skip_review:
+        output(level="Debug", message="Skipping review")
+        user_response = "s"
+    else:
+        print("\nI found {} classes.".format(str(len(URLS))))
+        print("Would you like to review them?")
+        print("Press r followed by enter to review or just press enter...")
+
+        user_response = input("? ")
 
     # copy URLS
     TURLS = []
@@ -224,6 +265,12 @@ if __name__ == "__main__":
 
     # Keep track of the total transfer size
     TOTAL_BYTES = 0
+
+    # List the classes
+    for rit_class in URLS:
+        output(level="Info", message=("Found " + rit_class[1]))
+
+    exit()
 
     # Loop through each course
     for course in URLS:
