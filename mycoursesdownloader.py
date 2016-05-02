@@ -104,9 +104,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Downloads all course contents from MyCourses')
     parser.add_argument('-u', help='Your RIT Username that you use for MyCourses')
     parser.add_argument('-d', help='The directory where the files will be downloaded')
-    #parser.add_argument('--force-review')
-    #parser.add_argument('--skip-review')
-    #parser.add_argument('--skip-classes')
+    #parser.add_argument('--force-review', help="Force review of each class")
+    #parser.add_argument('--skip-review', help="Don't prompt for class review")
+    #parser.add_argument('--skip-classes', help="List of Classes to skip. Entered text will be matched to the start of "
+                                               #"the string. So, `NSSA.24` will be matched to /NSSA\.24(.*)/g")
 
     args = parser.parse_args()
 
@@ -230,7 +231,7 @@ if __name__ == "__main__":
         #
         # Download all files in "content"
         #
-        """        session.get(D2L_BASEURL + "/d2l/le/content/" + course[0] + "/PartialMainView?identifier=TOC&moduleTitle=Table+of+Contents&_d2l_prc%24headingLevel=2&_d2l_prc%24scope=&_d2l_prc%24hasActiveForm=false&isXhr=true&requestId=4")
+        session.get(D2L_BASEURL + "/d2l/le/content/" + course[0] + "/PartialMainView?identifier=TOC&moduleTitle=Table+of+Contents&_d2l_prc%24headingLevel=2&_d2l_prc%24scope=&_d2l_prc%24hasActiveForm=false&isXhr=true&requestId=4")
 
         toc_page = session.get(D2L_BASEURL + "/d2l/le/content/" + course[0] + "/Home")
         toc_page_soup = BeautifulSoup(toc_page.text, "html.parser")
@@ -257,7 +258,7 @@ if __name__ == "__main__":
                 path = workingDirectory + "/" + course[1] + "/" + pointer + "/"
 
                 TOTAL_BYTES += download(url, path)
-"""
+
         #
         # Download all files in Dropbox
         #
