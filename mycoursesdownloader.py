@@ -33,6 +33,10 @@ import getpass
 import json
 import datetime
 
+# Constants
+D2L_BASEURL = "https://mycourses.rit.edu"
+
+
 # basically, mkdir -p /blah/blah/blah
 def mkdir_recursive(path):
     sub_path = os.path.dirname(path)
@@ -52,7 +56,7 @@ def safeFilePath(path):
 
 
 def output(level="Info", message=""):
-    print("[{0}][{1:>8}]  {2}".format(str(datetime.datetime.now()), level, message))
+    print("[{0}][{1:>8}] {2}".format(str(datetime.datetime.now()), level, message))
 
 
 def download(url, path):
@@ -87,6 +91,10 @@ def download(url, path):
 # Start main program
 if __name__ == "__main__":
 
+    #
+    # Set up Required Variables to Auth to MyCourses
+    #
+
     if sys.version_info[0] < 3:
         print("I need python 3+")
         exit()
@@ -111,10 +119,12 @@ if __name__ == "__main__":
 
     URLS = []   # [("22222", "PLOS.140"), ("11111", "NSSA.220")]
 
-    # Start our session.
-    re = requests.Session()
+    #
+    # Start the Session
+    #
+    session = requests.Session()
     # Log in
-    req = re.post('https://mycourses.rit.edu/d2l/lp/auth/login/login.d2l', data={
+    req = session.post(D2L_BASEURL + "/d2l/lp/auth/login/login.d2l", data={
         'username': args.u,
         'password': password
     })
@@ -125,9 +135,10 @@ if __name__ == "__main__":
     else:
         output(level="Info", message="Good Login")
 
-    r = re.get('https://mycourses.rit.edu/d2l/home')
+    r = session.get(D2L_BASEURL + "/d2l/home")
     soup = BeautifulSoup(r.text, "html.parser")
 
+    # Get the session token required for ajax queries
     xsrf = str(soup.findAll("script")[-1]).splitlines()
     for line in xsrf:
         if "D2L.LP.Web.Authentication.Xsrf.Init" in line:
@@ -145,7 +156,7 @@ if __name__ == "__main__":
         'requestId': '3',
         "d2l_referrer": xsrf,
     }
-    r = re.post('https://mycourses.rit.edu/d2l/le/manageCourses/widget/myCourses/6605/ContentPartial?defaultLeftRightPixelLength=10&defaultTopBottomPixelLength=7', data=data)
+    r = session.post(D2L_BASEURL + "/d2l/le/manageCourses/widget/myCourses/6605/ContentPartial?defaultLeftRightPixelLength=10&defaultTopBottomPixelLength=7", data=data)
     # d2l changed to ajax. woo!
     soup = BeautifulSoup(json.loads(r.text.replace("while(1);", ""))['Payload']['Html'], "html.parser")
     resp = soup.findAll(attrs={'class': 'd2l-collapsepane-content'})
@@ -167,8 +178,8 @@ if __name__ == "__main__":
         'requestId': '3',
         "d2l_referrer": xsrf,
     }
-    r = re.post('https://mycourses.rit.edu/d2l/le/manageCourses/widget/myCourses/6605/ContentPartial?defaultLeftRightPixelLength=10&defaultTopBottomPixelLength=7', data=data)
-    r = re.get('https://mycourses.rit.edu/d2l/home')
+    r = session.post(D2L_BASEURL + "/d2l/le/manageCourses/widget/myCourses/6605/ContentPartial?defaultLeftRightPixelLength=10&defaultTopBottomPixelLength=7", data=data)
+    r = session.get(D2L_BASEURL + "/d2l/home")
     soup = BeautifulSoup(r.text, "html.parser")
     resp = soup.findAll(attrs={'class': 'd2l-collapsepane-content'})
     for tresp in resp:
@@ -207,12 +218,16 @@ if __name__ == "__main__":
 
     # Keep track of the total transfer size
     TOTAL_BYTES = 0
-    
+
     # Loop through each course
     for course in URLS:
-        re.get("https://mycourses.rit.edu/d2l/le/content/" + course[0] + "/PartialMainView?identifier=TOC&moduleTitle=Table+of+Contents&_d2l_prc%24headingLevel=2&_d2l_prc%24scope=&_d2l_prc%24hasActiveForm=false&isXhr=true&requestId=4")
 
-        toc_page = re.get("https://mycourses.rit.edu/d2l/le/content/" + course[0] + "/Home")
+        #
+        # Download all files in "content"
+        #
+        session.get(D2L_BASEURL + "/d2l/le/content/" + course[0] + "/PartialMainView?identifier=TOC&moduleTitle=Table+of+Contents&_d2l_prc%24headingLevel=2&_d2l_prc%24scope=&_d2l_prc%24hasActiveForm=false&isXhr=true&requestId=4")
+
+        toc_page = session.get(D2L_BASEURL + "/d2l/le/content/" + course[0] + "/Home")
         toc_page_soup = BeautifulSoup(toc_page.text, "html.parser")
         toc_page_objs = toc_page_soup.findAll(attrs={'class': 'd2l-collapsepane'})
 
@@ -233,17 +248,19 @@ if __name__ == "__main__":
             tmp_links = toc_dataset.findAll(attrs={'class': 'd2l-link-main'})
             for link in tmp_links:
                 file_id = link['href'].split('/')[6]
-                url = "https://mycourses.rit.edu/d2l/le/content/"+ course[0] +"/topics/files/download/" + file_id  + "/DirectFileTopicDownload"
+                url = D2L_BASEURL + "/d2l/le/content/"+ course[0] +"/topics/files/download/" + file_id  + "/DirectFileTopicDownload"
                 path = workingDirectory + "/" + course[1] + "/" + pointer + "/"
 
                 TOTAL_BYTES += download(url, path)
 
-        # Download "Dropbox"
+        #
+        # Download all files in Dropbox
+        #
         if course[1] == "PHIL.102.15":
             print(" Edge case I do not want to deal with ")
             continue
 
-        dropbox_resp = re.get("https://mycourses.rit.edu/d2l/lms/dropbox/user/folders_list.d2l?ou=" + course[0]  + "&isprv=0")
+        dropbox_resp = session.get(D2L_BASEURL + "/d2l/lms/dropbox/user/folders_list.d2l?ou=" + course[0]  + "&isprv=0")
         dropbox_soup = BeautifulSoup(dropbox_resp.text)
 
         try:
@@ -281,18 +298,33 @@ if __name__ == "__main__":
                 continue
 
             output(level="Info", message="Processing Dropbox for" + safeFilePath(dropbox_item_name))
-            dropbox_dl_page = re.get("https://mycourses.rit.edu" + dropbox_item_page['href'])
+            dropbox_dl_page = session.get(D2L_BASEURL + dropbox_item_page['href'])
             dropbox_dl_soup = BeautifulSoup(dropbox_dl_page.text)
 
             # Find all download links
             dropbox_dl_links = dropbox_dl_soup.findAll('span', attrs={'class': 'dfl'})
 
             for dropbox_dl_link in dropbox_dl_links:
-                url = "https://mycourses.rit.edu" + dropbox_dl_link.find('a')['href']
-                file = re.get(url, stream=True)
-                path = workingDirectory + "/" + course[1] + "/dropbox/" + dropbox_item_name + "/"
+                url = D2L_BASEURL + dropbox_dl_link.find('a')['href']
+                path = workingDirectory + "/" + course[1] + "/Dropbox/" + dropbox_item_name + "/"
 
                 TOTAL_BYTES += download(url, path)
+
+            #
+            # Download Dropbox Feedback
+            #
+            feedback_link = dropbox_tr.findAll("tr")[3].find("a")["href"]
+            feedback_page = session.get(feedback_link)
+            feedback_content = BeautifulSoup(feedback_page, "html.parser")
+            # Dropboxes can have multiple feedback items, so I need a way to test it.
+            # ... Fuck it. I'll just search for the download URL
+            feedback_all_links = feedback_content.findAll("span", {"class": "dfl"})
+            feedback_all_links.pop() # Remove the first link, which is the initial file
+            for feedback_file in feedback_all_links:
+                feedback_file_url = D2L_BASEURL + feedback_file.find("a")["href"]
+                path = workingDirectory + "/" + course[1] + "/Dropbox/" + dropbox_item_name + "/"
+
+                TOTAL_BYTES += download(feedback_file_url, path)
 
     MB = TOTAL_BYTES / 1024 / 1024
 
