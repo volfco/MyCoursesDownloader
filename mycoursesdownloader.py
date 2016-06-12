@@ -131,17 +131,38 @@ if __name__ == "__main__":
     # Start the Session
     #
     session = requests.Session()
-    # Log in
-    req = session.post(D2L_BASEURL + "/d2l/lp/auth/login/login.d2l", data={
-        'username': args.u,
-        'password': password
-    })
+    # Log in. Now with Shibboleth support!
+    import pprint
+    r = session.get(D2L_BASEURL + '/Shibboleth.sso/Login?entityID=https://shibboleth.main.ad.rit.edu/idp/shibboleth&target=https%3A%2F%2Fmycourses.rit.edu%2Fd2l%2FshibbolethSSO%2Flogin.d2l', allow_redirects=True)
 
-    if "Invalid Username" in req.text:
-        output(level="Error", message="MyCourses rejected your username and/or password")
+    rs = session.post(r.url, data={
+        'j_username': args.u,
+        'j_password': password,
+        '_eventId_proceed': ''
+    })
+    if rs.status_code == 401:
+        output(level="Error", message="Shibboleth rejected your username and/or password.")
         exit()
-    else:
-        output(level="Info", message="Good Login")
+
+
+    # 06/11/16 - Fuck. D2l is much more secure that RIT's Shibboleth implementations
+    # Ok. So. I hit Shibboleth.sso/SAML2/POST, and in my browser I get two 302 redirects and end up at lelogin.d2.
+    # Here, I'm getting bumped to a 500 error page (Which is fucking stupid D2l. Dont 302 error pages)
+    # after the initial hit.
+
+    # 06/12/16 - Ok, so it wasn't a cookie issue. The issue here is that Shibboleth was returning an unicode encoded
+    # RelayState, which FireFox and Chrome handle correctly. The problem was that Requests/urllib3 does not decode it,
+    # and was passing the raw unicoded string onto D2l which was causing it to choke. U
+    dta = {
+        # TODO Make this dynamic and read the data from the response one I figure out how to decode the stuff. .decode() does not work
+        "RelayState": "https://mycourses.rit.edu/d2l/shibbolethSSO/login.d2l",
+        "SAMLResponse": re.search('(<input type="hidden" name="SAMLResponse" value=").*("/>)', rs.text).group(0).replace('<input type="hidden" name="SAMLResponse" value="', '').replace('"/>', '')
+    }
+
+    rq = session.post(D2L_BASEURL + "/Shibboleth.sso/SAML2/POST", data=dta, allow_redirects=True)
+    session.get(D2L_BASEURL + "/d2l/lp/auth/login/ProcessLoginActions.d2l")
+
+    output(level="Info", message="Good Login")
 
     r = session.get(D2L_BASEURL + "/d2l/home")
     soup = BeautifulSoup(r.text, "html.parser")
@@ -230,8 +251,6 @@ if __name__ == "__main__":
         output(level="Info", message=("Deleted " + str(len(URLS) - len(TURLS))))
         URLS = []
         URLS = TURLS
-
-    output(level="Info", message="Found {} classes.".format(str(len(URLS))))
 
     if args.force_review:
         output(level="Debug", message="Reviewing Courses")
