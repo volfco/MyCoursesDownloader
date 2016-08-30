@@ -39,9 +39,18 @@ import datetime
 D2L_BASEURL = "https://mycourses.rit.edu"
 
 
+def output(level="Info", message=""):
+    print("[{0}][{1:>8}] {2}".format(str(datetime.datetime.now()), level, message))
+
+
 # basically, mkdir -p /blah/blah/blah
 def mkdir_recursive(path):
-    os.makedirs(path, exist_ok=True)
+    try:
+        os.makedirs(path, exist_ok=True)
+    except Exception as e:
+        output(level="Error", message="Exception: {}".format(e))
+        exit(1)
+
 
 def safeFilePath(path):
     ## Fucking unicode
@@ -51,11 +60,6 @@ def safeFilePath(path):
     for char in bad:
         path = path.replace(char, " ")
     return path
-
-
-def output(level="Info", message=""):
-    print("[{0}][{1:>8}] {2}".format(str(datetime.datetime.now()), level, message))
-
 
 def download(url, path):
     SIZE = 0
@@ -113,13 +117,17 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if args.u is None or args.d is None:
-        output(level="Warning", message="Invalid usage. see mycoursesdownloader.py -h")
-        exit()
+    if args.u is None:
+        args.u = input("RIT Username: ")
 
-    password = getpass.getpass("Enter your RIT password: ")
+    password = getpass.getpass("RIT Password: ")
 
-    workingDirectory = "./" + args.d
+    if args.d is None:
+        args.d = input("Enter download directory: ")
+        if not args.d:
+            args.d = os.path.join(os.getcwd(),"MyCoursesDownloaderOutput")
+
+    workingDirectory = os.path.join(os.getcwd(),args.d)
 
     if not os.path.exists(workingDirectory):
         output(level="Warning", message="Directory does not exist. Creating")
@@ -287,8 +295,6 @@ if __name__ == "__main__":
     for rit_class in URLS:
         output(level="Info", message=("Found " + rit_class[1]))
 
-    exit()
-
     # Loop through each course
     for course in URLS:
 
@@ -317,11 +323,14 @@ if __name__ == "__main__":
 
             tmp_links = toc_dataset.findAll(attrs={'class': 'd2l-link-main'})
             for link in tmp_links:
-                file_id = link['href'].split('/')[6]
-                url = D2L_BASEURL + "/d2l/le/content/"+ course[0] +"/topics/files/download/" + file_id  + "/DirectFileTopicDownload"
-                path = workingDirectory + "/" + course[1] + "/" + pointer + "/"
-
-                TOTAL_BYTES += download(url, path)
+                try:
+                    file_id = link['href'].split('/')[6]
+                    url = D2L_BASEURL + "/d2l/le/content/"+ course[0] +"/topics/files/download/" + file_id  + "/DirectFileTopicDownload"
+                    path = workingDirectory + "/" + course[1] + "/" + pointer + "/"
+                    TOTAL_BYTES += download(url, path)
+                except Exception as e:
+                    output(level="Error", message="Exception: {}".format(e))
+                    continue
 
         #
         # Download all files in Dropbox
