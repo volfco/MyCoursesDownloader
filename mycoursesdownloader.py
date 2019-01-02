@@ -451,6 +451,7 @@ if __name__ == "__main__":
         for i in bar:
             # Make Directories
             fs_path = "{}/{}".format(workingDirectory, parsed_courses[i]['name'])
+            mkdir_recursive(fs_path)
 
             metadata = "Course: {} ({})\nDepartment: {}\nSemester: {}\nStart: {}\nEnd: {}\n".format(
                 parsed_courses[i]['name'],
